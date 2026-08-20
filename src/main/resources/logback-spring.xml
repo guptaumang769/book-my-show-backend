@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Logging configuration with two profiles:
+
+    * default (profile "!json"): human-readable console text for local development. The pattern
+      includes the correlationId (from CorrelationIdFilter's MDC) and the traceId/spanId that
+      Micrometer Tracing puts in the MDC, so even plain logs are correlatable.
+
+    * profile "json": structured JSON via LogstashEncoder, one JSON object per line. This is what
+      you ship to a log aggregator (ELK / Grafana Loki) — machine-parseable, with MDC fields
+      (correlationId, traceId, spanId) as first-class JSON keys you can filter and pivot on.
+
+  Run the app with -Dspring.profiles.active=json to get JSON output for the observability stack.
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- Human-readable text logging: the local default. -->
+    <springProfile name="!json">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [corr=%X{correlationId:-} trace=%X{traceId:-} span=%X{spanId:-}] %logger{36} - %msg%n</pattern>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!-- Structured JSON logging for ELK / Loki ingestion. -->
+    <springProfile name="json">
+        <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <!-- Include the whole MDC (correlationId, and Micrometer's traceId/spanId). -->
+                <includeMdcKeyName>correlationId</includeMdcKeyName>
+                <includeMdcKeyName>traceId</includeMdcKeyName>
+                <includeMdcKeyName>spanId</includeMdcKeyName>
+                <customFields>{"application":"book-my-show-backend"}</customFields>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="JSON"/>
+        </root>
+    </springProfile>
+</configuration>
