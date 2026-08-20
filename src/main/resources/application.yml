@@ -1,0 +1,96 @@
+spring:
+  application:
+    name: book-my-show-backend
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/bookmyshow}
+    username: ${DB_USER:bms}
+    password: ${DB_PASSWORD:bms}
+
+  jpa:
+    hibernate:
+      # Flyway owns the schema; Hibernate only validates the mapping against it.
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,circuitbreakers,retries
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    tags:
+      # Common tag stamped on every meter so a shared Prometheus can slice by application.
+      application: ${spring.application.name}
+    distribution:
+      # Emit histogram buckets for HTTP server timings so Grafana can compute p95/p99 latency
+      # and render latency heatmaps (histogram_quantile over http_server_requests_seconds_bucket).
+      percentiles-histogram:
+        http.server.requests: true
+  tracing:
+    sampling:
+      # Sample 100% of traces in dev; lower this (e.g. 0.1) in production to control cost.
+      probability: 1.0
+  otlp:
+    tracing:
+      # Micrometer Tracing exports spans over OTLP/HTTP to a collector (Grafana Tempo here).
+      endpoint: ${OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+security:
+  jwt:
+    # Override in real deployments. Must be >= 32 bytes for HS256.
+    secret: ${JWT_SECRET:change-me-to-a-32-byte-minimum-secret-key!!}
+    validity-ms: ${JWT_VALIDITY_MS:86400000}
+
+booking:
+  expiry:
+    fixed-delay-ms: ${BOOKING_EXPIRY_DELAY_MS:60000}
+
+# Outbox relay: how often the poller ships unpublished events to Kafka.
+outbox:
+  poll:
+    fixed-delay-ms: ${OUTBOX_POLL_DELAY_MS:2000}
+
+# Resilience4j guards the payment-gateway call (instance name "paymentGateway").
+resilience4j:
+  circuitbreaker:
+    instances:
+      paymentGateway:
+        sliding-window-size: 10            # evaluate the last 10 calls
+        failure-rate-threshold: 50         # open if >=50% failed
+        wait-duration-in-open-state: 10s   # stay open 10s, then probe (half-open)
+        permitted-number-of-calls-in-half-open-state: 3
+        register-health-indicator: true    # surfaces in /actuator/health
+  retry:
+    instances:
+      paymentGateway:
+        max-attempts: 3                    # 1 try + 2 retries
+        wait-duration: 200ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
