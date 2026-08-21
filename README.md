@@ -71,7 +71,8 @@ sequenceDiagram
         B->>D: SELECT ... FOR UPDATE (durable backstop)
         B->>D: mark LOCKED, create booking (INITIATED, expires+10m)
         B-->>U: booking + expiry
-        Note over B,D: on confirm → payment → BOOKED&#59;<br/>on timeout → expiry job frees seats
+        Note over B,D: on confirm → payment → BOOKED
+        Note over B,D: on timeout → expiry job frees seats
     end
 ```
 
