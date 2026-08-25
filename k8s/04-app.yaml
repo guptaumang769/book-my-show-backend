@@ -1,0 +1,106 @@
+# The BookMyShow app itself: Deployment + Service + HPA.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bms-app
+  namespace: bookmyshow
+  labels:
+    app: bms-app
+spec:
+  replicas: 2                     # start with 2 for availability; HPA scales further
+  selector:
+    matchLabels:
+      app: bms-app
+  strategy:
+    type: RollingUpdate          # zero-downtime deploys
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: bms-app
+    spec:
+      containers:
+        - name: bms-app
+          # Replace with your pushed image, e.g. <dockerhub-user>/book-my-show-backend:latest
+          image: book-my-show-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: bms-config
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bms-secret
+                  key: DB_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: bms-secret
+                  key: JWT_SECRET
+          # Requests = what the scheduler reserves; limits = the hard ceiling.
+          # The HPA scales on CPU relative to the *request*, so setting it matters.
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          # Three probe types, each with a distinct job:
+          #  - startup: gives the JVM time to boot before liveness kicks in
+          #  - readiness: gates traffic — pod removed from Service until DB/Redis are up
+          #  - liveness: restarts a wedged pod
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bms-app
+  namespace: bookmyshow
+spec:
+  type: ClusterIP
+  selector:
+    app: bms-app
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: bms-app
+  namespace: bookmyshow
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: bms-app
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70   # add pods when avg CPU crosses 70% of request

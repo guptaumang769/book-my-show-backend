@@ -1,0 +1,72 @@
+# Postgres as a StatefulSet — the right primitive for stateful workloads:
+# stable network identity (postgres-0) and a PersistentVolumeClaim per replica
+# so data survives pod restarts. (In production on AWS you'd use RDS instead of
+# running Postgres in-cluster; this is here to make the demo self-contained.)
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: bookmyshow
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: bookmyshow
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: bms-config
+                  key: DB_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bms-secret
+                  key: DB_PASSWORD
+            # Point PGDATA at a subdir so the mounted volume root staying non-empty
+            # doesn't break initdb.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "bms", "-d", "bookmyshow"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata:
+        name: pgdata
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: bookmyshow
+spec:
+  # Headless service (clusterIP: None) gives the StatefulSet stable DNS.
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
