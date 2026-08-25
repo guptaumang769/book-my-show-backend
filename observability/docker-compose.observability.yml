@@ -1,0 +1,48 @@
+# Local observability stack: Prometheus (metrics), Grafana (dashboards), Tempo (traces).
+#
+#   Prometheus  :9090  — pulls /actuator/prometheus from the app on the host
+#   Grafana     :3000  — admin/admin; auto-provisioned with Prometheus + Tempo datasources
+#   Tempo       :4318  — OTLP/HTTP receiver for spans exported by Micrometer Tracing
+#
+# Start with:  docker compose -f observability/docker-compose.observability.yml up -d
+services:
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: bms-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    extra_hosts:
+      # Lets Prometheus reach the host (where the Spring Boot app runs) on Linux too.
+      - "host.docker.internal:host-gateway"
+
+  tempo:
+    image: grafana/tempo:2.6.0
+    container_name: bms-tempo
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    volumes:
+      - ./tempo.yml:/etc/tempo/tempo.yml:ro
+    ports:
+      - "3200:3200"   # Tempo query API (used by Grafana)
+      - "4318:4318"   # OTLP/HTTP receiver — matches management.otlp.tracing.endpoint
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: bms-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    volumes:
+      # Provision datasources and the dashboard so Grafana comes up ready to use.
+      - ./grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./grafana/dashboard-bookmyshow.json:/var/lib/grafana/dashboards/dashboard-bookmyshow.json:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - tempo

@@ -1,0 +1,12 @@
+# Grafana dashboard provider: loads any JSON dashboards found in the mounted folder on startup.
+apiVersion: 1
+
+providers:
+  - name: bookmyshow
+    orgId: 1
+    folder: BookMyShow
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

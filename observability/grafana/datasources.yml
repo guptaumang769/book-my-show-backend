@@ -1,0 +1,16 @@
+# Grafana datasource provisioning: auto-adds Prometheus (metrics) and Tempo (traces) so Grafana
+# comes up wired to both pillars with no manual clicking.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    # Use Grafana Explore -> Tempo to search traces by traceId (the same id logs carry in the MDC).

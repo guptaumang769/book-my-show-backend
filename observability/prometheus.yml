@@ -1,0 +1,24 @@
+# Prometheus scrape configuration (PULL model).
+#
+# Prometheus periodically GETs each target's /actuator/prometheus endpoint and stores the samples
+# it finds. The app never pushes; it just exposes the exposition-format text and Prometheus pulls.
+#
+# host.docker.internal resolves to the host machine from inside the Prometheus container, so this
+# scrapes the Spring Boot app running on the host at :8080. If the app runs as another container on
+# the same compose network, replace the target with "<service-name>:8080".
+#
+# KUBERNETES ALTERNATIVE: in k8s you don't hand-list targets. You install kube-prometheus-stack and
+# create a ServiceMonitor CR that selects your Service by label; the Prometheus Operator turns that
+# into scrape config automatically and Prometheus discovers pods via the Kubernetes SD API.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: book-my-show-backend
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["host.docker.internal:8080"]
+        labels:
+          application: book-my-show-backend
