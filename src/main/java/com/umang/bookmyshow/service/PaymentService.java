@@ -93,13 +93,13 @@ public class PaymentService {
         if (key == null || key.isBlank()) {
             return;
         }
-        IdempotencyRecord records = IdempotencyRecord.builder()
+        IdempotencyRecord idempotencyRecord = IdempotencyRecord.builder()
                 .idempotencyKey(key)
                 .bookingId(request.getBookingId())
                 .paymentId(payment.getId())
                 .gatewayTransactionId(payment.getGatewayTransactionId())
                 .paymentStatus(payment.getStatus().name())
                 .build();
-        idempotencyRepository.save(records);
+        idempotencyRepository.save(idempotencyRecord);
     }
 }

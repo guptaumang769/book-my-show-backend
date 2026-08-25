@@ -139,8 +139,7 @@ mvn verify      # + Testcontainers integration tests (needs Docker)
 > Windows (PowerShell): `$env:JAVA_HOME="C:\Program Files\Eclipse Adoptium\jdk-21"; mvn test`.
 
 The headline integration test — `BookingConcurrencyIT` — fires **20 threads at the same
-seat** and asserts exactly one wins, proving the locking prevents double-booking. See the
-[testing guide](guides/03-TESTING.md).
+seat** and asserts exactly one wins, proving the locking prevents double-booking.
 
 ---
 
@@ -156,12 +155,11 @@ a dedicated shard. Full reasoning + the "when not to use microservices" framing 
 
 ---
 
-## Documentation & learning material
+## Design docs
 
-- **[guides/](guides/)** — laptop setup, Docker→K8s→AWS deployment, testing, GitHub Pages
-- **[concepts/](concepts/)** — 11 interview-prep concept guides (Java, Spring, SQL, Kafka,
-  Redis, Docker, K8s, AWS, System Design, LLD, Observability) with ~20 Q&A each
-- **[HLD.md](HLD.md)** / **[LLD.md](LLD.md)** — design docs this code was built against
+- **[HLD.md](HLD.md)** — high-level design: requirements, capacity estimates, architecture, scalability
+- **[LLD.md](LLD.md)** — low-level design: class/sequence diagrams, design patterns, transaction isolation, API specs
+- **[DIAGRAMS.md](DIAGRAMS.md)** — HLD, UML class, ER, and booking state-machine diagrams (Mermaid)
 
 ---
 
@@ -169,6 +167,7 @@ a dedicated shard. Full reasoning + the "when not to use microservices" framing 
 
 **Umang Gupta** — backend engineer
 [LinkedIn](https://www.linkedin.com/in/umang1395/) ·
-[GitHub](https://github.com/guptaumang769)
+[GitHub](https://github.com/guptaumang769) ·
+[LeetCode](https://leetcode.com/u/umang_g/)
 
 _MIT License — free to use for learning._
