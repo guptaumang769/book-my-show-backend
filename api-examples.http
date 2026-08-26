@@ -1,0 +1,100 @@
+### BookMyShow Backend — API examples
+# Runnable in IntelliJ HTTP Client (built-in) or the VS Code "REST Client" extension.
+# Start the app first (see README): docker compose up -d && mvn spring-boot:run
+# Run requests top-to-bottom — later requests reuse variables captured from earlier responses.
+# Interactive docs: http://localhost:8080/swagger-ui.html
+
+@host = http://localhost:8080
+
+### 1. Register a new user  ->  captures the JWT and userId
+# @name register
+POST {{host}}/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "demo.user@example.com",
+  "password": "secret123",
+  "firstName": "Demo",
+  "lastName": "User",
+  "phone": "9999999999"
+}
+
+> {%
+    client.global.set("token", response.body.data.token);
+    client.global.set("userId", response.body.data.userId);
+%}
+
+### 2. Login (alternative to register if the user already exists)
+# @name login
+POST {{host}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "demo.user@example.com",
+  "password": "secret123"
+}
+
+> {%
+    client.global.set("token", response.body.data.token);
+    client.global.set("userId", response.body.data.userId);
+%}
+
+### 3. Browse active movies (seed data is loaded by Flyway V3)
+GET {{host}}/api/v1/movies
+Authorization: Bearer {{token}}
+
+### 4. List shows for a movie in a city on a date
+GET {{host}}/api/v1/movies/1/shows?cityId=1&date=2026-08-26
+Authorization: Bearer {{token}}
+
+### 5. Get available seats for a show
+GET {{host}}/api/v1/shows/1/seats
+Authorization: Bearer {{token}}
+
+### 6. Initiate a booking  ->  locks seats, starts the 10-min window, captures bookingId
+# @name initiate
+POST {{host}}/api/v1/bookings/initiate
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "userId": {{userId}},
+  "showId": 1,
+  "seatIds": [1, 2, 3]
+}
+
+> {%
+    client.global.set("bookingId", response.body.data.bookingId);
+%}
+
+### 7. Confirm the booking (payment succeeds via the stub gateway)
+# idempotencyKey makes this safe to retry — repeating it will NOT double-charge.
+PUT {{host}}/api/v1/bookings/{{bookingId}}/confirm
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "paymentMethod": "UPI",
+  "idempotencyKey": "confirm-{{bookingId}}-1",
+  "paymentDetails": { "vpa": "demo@upi" }
+}
+
+### 8. Get a single booking's details
+GET {{host}}/api/v1/bookings/{{bookingId}}?userId={{userId}}
+Authorization: Bearer {{token}}
+
+### 9. List all of the user's bookings
+GET {{host}}/api/v1/bookings?userId={{userId}}
+Authorization: Bearer {{token}}
+
+### 10. Cancel a booking (releases its seats)
+DELETE {{host}}/api/v1/bookings/{{bookingId}}?userId={{userId}}
+Authorization: Bearer {{token}}
+
+### --- Health & ops ---
+
+### Liveness/readiness aggregate
+GET {{host}}/actuator/health
+
+### Prometheus metrics scrape endpoint
+GET {{host}}/actuator/prometheus
