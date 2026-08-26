@@ -1,19 +1,22 @@
 # ---- Build stage ----------------------------------------------------------
 # Uses a full JDK + Maven to compile and package the app into a jar.
-# A separate dependency-resolution layer keeps rebuilds fast: as long as
-# pom.xml is unchanged, Docker reuses the cached dependency layer.
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# 1. Resolve dependencies first (cached unless pom.xml changes).
+# Copy the POM and sources, then build the jar in a single step. Tests are skipped
+# here — CI runs them; baking Testcontainers into the image would need Docker-in-Docker.
+#
+# We deliberately do NOT run `dependency:go-offline`: it fires hundreds of requests at
+# Maven Central and, on shared CI IPs, trips its rate limit (HTTP 429). `package` fetches
+# only what's actually needed, and the retry flags below ride out transient 429/timeout
+# blips (native resolver + wagon names, so it works whichever transport Maven picks).
 COPY pom.xml .
-RUN mvn -q -B dependency:go-offline
-
-# 2. Copy sources and build. Skip tests in the image build — CI runs them;
-#    baking test execution into the image would need Docker-in-Docker for
-#    Testcontainers, which we deliberately keep in the CI pipeline instead.
 COPY src ./src
-RUN mvn -q -B clean package -DskipTests
+RUN mvn -q -B -DskipTests \
+      -Daether.connector.http.retryHandler.count=5 \
+      -Dmaven.wagon.http.retryHandler.count=5 \
+      -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 \
+      clean package
 
 # ---- Runtime stage --------------------------------------------------------
 # A slim JRE (no compiler/Maven) — smaller image, smaller attack surface.
