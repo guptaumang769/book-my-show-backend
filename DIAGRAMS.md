@@ -32,13 +32,13 @@ flowchart TB
     end
 
     Lock -->|SETNX + TTL| Redis[(Redis<br/>seat locks)]
-    Catalog -->|@Cacheable| Redis
-    Booking -->|FOR UPDATE / @Version| PG[(PostgreSQL<br/>Flyway-managed)]
+    Catalog -->|"@Cacheable"| Redis
+    Booking -->|"FOR UPDATE / @Version"| PG[(PostgreSQL<br/>Flyway-managed)]
     Catalog --> PG
     Payment --> PG
 
     Booking -->|write event in same tx| Outbox[(outbox_events)]
-    Poller[OutboxPoller @Scheduled] -->|relay| Kafka{{Kafka<br/>booking-events}}
+    Poller["OutboxPoller @Scheduled"] -->|relay| Kafka{{Kafka<br/>booking-events}}
     Outbox --> Poller
     Payment -->|Resilience4j CB+Retry| GW[Payment gateway]
     Kafka --> Notif[Notification consumer]
