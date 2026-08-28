@@ -38,11 +38,12 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Slf4j
 @Service
@@ -62,11 +63,18 @@ public class BookingService {
     private final BookingMetrics bookingMetrics;
 
     /**
-     * Initiate flow (LLD 7.1): grab Redis locks first, then pessimistically lock the
+     * Initiate flow: grab Redis locks first, then pessimistically lock the
      * show_seat rows, validate availability, LOCK them, create the INITIATED booking with a
      * 10-minute expiry, and decrement the denormalized counter. On any failure the Redis
      * locks are released so the seats free up immediately rather than waiting out the TTL.
+     *
+     * <p>Locking seats reduces availability, so the cached seat map for this show (and any
+     * shows list carrying the availability count) is evicted.
      */
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "show_seats", key = "#request.showId"),
+            @CacheEvict(cacheNames = "shows", allEntries = true)
+    })
     @Transactional(isolation = Isolation.READ_COMMITTED, timeout = 10)
     public BookingInitiateResponse initiateBooking(BookingInitiateRequest request) {
         request.validate();
@@ -145,19 +153,19 @@ public class BookingService {
             return toInitiateResponse(savedBooking, availableSeats, now);
         } catch (RuntimeException e) {
             // Transaction rolls back automatically; free the Redis locks so seats reopen now.
-            seatLockService.releaseLocks(request.getShowId(), request.getSeatIds());
+            seatLockService.releaseLocks(request.getShowId(), request.getSeatIds(), request.getUserId());
             throw e;
         }
     }
 
     /**
-     * Confirm flow (LLD 3.2): validate the booking is INITIATED and unexpired, charge via
-     * PaymentService, then mark the booking CONFIRMED and its seats BOOKED.
+     * Confirm flow: validate the booking is INITIATED and unexpired, charge via PaymentService,
+     * then mark the booking CONFIRMED and its seats BOOKED.
      *
-     * <p>SAGA COMPENSATION: payment and booking-confirmation are separate steps. If the
-     * charge succeeds but the confirmation write fails, we refund conceptually by marking the
-     * payment for reversal and rethrow — the booking stays INITIATED and will expire, freeing
-     * seats. (A full saga would enqueue a refund command; here we log and surface the error.)
+     * <p>Payment and confirmation run in one transaction, so a DB failure after the charge rolls
+     * back the whole unit — the booking stays INITIATED and its hold simply expires. The one edge
+     * that a single transaction can't undo is the <em>external</em> gateway charge itself; a
+     * production system reconciles that with a separate refund/settlement job.
      */
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public BookingConfirmResponse confirmBooking(Long bookingId, BookingConfirmRequest request) {
@@ -194,11 +202,15 @@ public class BookingService {
             booking.setConfirmedAt(now);
             bookingRepository.save(booking);
 
-            List<ShowSeat> seats = showSeatRepository.findByShowId(booking.getShow().getId()).stream()
-                    .filter(s -> bookingId.equals(s.getBookingId()))
-                    .toList();
+            List<ShowSeat> seats = showSeatRepository.findByBookingId(bookingId);
             seats.forEach(s -> s.setStatus(ShowSeatStatus.BOOKED));
             showSeatRepository.saveAll(seats);
+
+            // Seats are BOOKED for good now (DB is the source of truth); drop the Redis holds
+            // instead of leaving them to age out their 10-minute TTL.
+            List<Long> confirmedSeatIds = seats.stream().map(ShowSeat::getId).toList();
+            seatLockService.releaseLocks(
+                    booking.getShow().getId(), confirmedSeatIds, booking.getUser().getId());
 
             outboxService.record(new BookingConfirmedEvent(booking));
             bookingMetrics.recordConfirmed();
@@ -210,6 +222,10 @@ public class BookingService {
         }
     }
 
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "show_seats", allEntries = true),
+            @CacheEvict(cacheNames = "shows", allEntries = true)
+    })
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public void cancelBooking(Long bookingId, Long userId) {
         Booking booking = bookingRepository.findById(bookingId)
@@ -225,9 +241,7 @@ public class BookingService {
         booking.setCancelledAt(now);
         bookingRepository.save(booking);
 
-        List<ShowSeat> seats = showSeatRepository.findByShowId(booking.getShow().getId()).stream()
-                .filter(s -> bookingId.equals(s.getBookingId()))
-                .toList();
+        List<ShowSeat> seats = showSeatRepository.findByBookingId(bookingId);
         seats.forEach(s -> {
             s.setStatus(ShowSeatStatus.AVAILABLE);
             s.setLockedAt(null);
@@ -238,7 +252,7 @@ public class BookingService {
         showRepository.incrementAvailableSeats(booking.getShow().getId(), seats.size());
 
         List<Long> seatIds = seats.stream().map(ShowSeat::getId).toList();
-        seatLockService.releaseLocks(booking.getShow().getId(), seatIds);
+        seatLockService.releaseLocks(booking.getShow().getId(), seatIds, userId);
         outboxService.record(new BookingCancelledEvent(booking));
         bookingMetrics.recordCancelled();
     }
@@ -250,9 +264,7 @@ public class BookingService {
         if (booking.getUser() == null || !booking.getUser().getId().equals(userId)) {
             throw new InvalidRequestException("Booking does not belong to user " + userId);
         }
-        List<ShowSeat> seats = showSeatRepository.findByShowId(booking.getShow().getId()).stream()
-                .filter(s -> bookingId.equals(s.getBookingId()))
-                .toList();
+        List<ShowSeat> seats = showSeatRepository.findByBookingId(bookingId);
         return BookingDetailsResponse.builder()
                 .bookingId(booking.getId())
                 .bookingReference(booking.getBookingReference())
@@ -270,15 +282,15 @@ public class BookingService {
     }
 
     @Transactional(readOnly = true)
-    public List<BookingDetailsResponse> getUserBookings(Long userId) {
-        return bookingRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+    public List<BookingDetailsResponse> getUserBookings(Long userId, Pageable pageable) {
+        return bookingRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable).stream()
                 .map(b -> getBookingDetails(b.getId(), userId))
                 .toList();
     }
 
     /**
-     * Enforces the booking state machine (LLD section 4). Rejects illegal transitions with
-     * a clear error instead of silently corrupting state.
+     * Enforces the booking state machine: rejects illegal transitions with a clear error
+     * instead of silently corrupting state.
      */
     private void assertTransition(BookingStatus from, BookingStatus to) {
         boolean allowed = switch (to) {

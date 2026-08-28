@@ -11,6 +11,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -54,11 +56,13 @@ public class BookingController {
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
-    @Operation(summary = "List a user's bookings")
+    @Operation(summary = "List a user's bookings (paginated, newest first)")
     @GetMapping
     public ResponseEntity<ApiResponse<List<BookingDetailsResponse>>> getUserBookings(
-            @RequestParam Long userId) {
-        return ResponseEntity.ok(ApiResponse.success(bookingService.getUserBookings(userId)));
+            @RequestParam Long userId,
+            @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(
+                ApiResponse.success(bookingService.getUserBookings(userId, pageable)));
     }
 
     @Operation(summary = "Get a single booking's details")

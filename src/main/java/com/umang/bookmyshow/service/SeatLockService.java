@@ -65,18 +65,23 @@ public class SeatLockService {
         redisTemplate.delete(buildLockKey(showId, seatId));
     }
 
-    /** Release by showId + seat ids (convenience used by BookingService/scheduler rollback). */
-    public void releaseLocks(Long showId, List<Long> seatIds) {
-        List<String> keys = new ArrayList<>(seatIds.size());
-        for (Long seatId : seatIds) {
-            keys.add(buildLockKey(showId, seatId));
-        }
-        releaseLocks(keys);
-    }
-
     public void releaseLocks(List<String> lockKeys) {
         if (lockKeys != null && !lockKeys.isEmpty()) {
             redisTemplate.delete(lockKeys);
+        }
+    }
+
+    /**
+     * Ownership-checked release of a batch: each lock is removed only if this user still holds
+     * it (via {@link #safeRelease}). Used by the booking/cancel/expiry paths so we never delete
+     * a lock that expired and was re-acquired by a different user in the meantime.
+     */
+    public void releaseLocks(Long showId, List<Long> seatIds, Long userId) {
+        if (seatIds == null) {
+            return;
+        }
+        for (Long seatId : seatIds) {
+            safeRelease(showId, seatId, userId);
         }
     }
 

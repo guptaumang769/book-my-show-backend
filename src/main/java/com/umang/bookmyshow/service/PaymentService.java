@@ -14,6 +14,7 @@ import com.umang.bookmyshow.repository.PaymentRepository;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -100,6 +101,12 @@ public class PaymentService {
                 .gatewayTransactionId(payment.getGatewayTransactionId())
                 .paymentStatus(payment.getStatus().name())
                 .build();
-        idempotencyRepository.save(idempotencyRecord);
+        try {
+            idempotencyRepository.save(idempotencyRecord);
+        } catch (DataIntegrityViolationException e) {
+            // A concurrent replay committed the same key first; the unique constraint did its
+            // job. Treat it as already-recorded rather than surfacing a 500 to the caller.
+            log.warn("Idempotency key {} already recorded by a concurrent request", key);
+        }
     }
 }
