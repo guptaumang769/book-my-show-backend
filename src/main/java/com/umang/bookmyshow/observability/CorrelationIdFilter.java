@@ -14,19 +14,9 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Puts a correlation id into the SLF4J MDC for the lifetime of every HTTP request.
- *
- * <p>WHY CORRELATION IDS MATTER: a single user action fans out into many log lines across many
- * threads and (in a real system) many services. Without a shared id, those lines are impossible to
- * stitch back together in Kibana/Grafana Loki. A correlation id — read from the {@code
- * X-Correlation-Id} header if a gateway/upstream already assigned one, otherwise generated here —
- * is stamped onto every log line via the MDC and echoed back in the response header so the caller
- * (and downstream services) can reuse it. It is the "logs" pillar's answer to what a traceId is for
- * distributed tracing: one key that ties an entire request together.
- *
- * <p>Runs at HIGHEST_PRECEDENCE so the id is present before any other filter or handler logs, and
- * the MDC is cleared in a finally block so the value never leaks onto the next request served by a
- * pooled thread.
+ * Stamps a correlation id into the SLF4J MDC for each request (reusing an inbound
+ * {@code X-Correlation-Id} if present, else generating one) and echoes it in the response.
+ * Runs first so every log line carries it; cleared in finally so it never leaks across pooled threads.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)

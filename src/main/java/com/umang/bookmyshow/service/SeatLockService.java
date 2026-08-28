@@ -21,12 +21,7 @@ public class SeatLockService {
     private static final Duration LOCK_DURATION = Duration.ofMinutes(10);
     private static final String KEY_PREFIX = "seat:lock:";
 
-    /**
-     * Lua that deletes a key only if its value still matches the caller's token.
-     * Check-then-delete MUST be atomic: if we did GET then DEL from Java, the lock could
-     * expire and be re-acquired by another user between our GET and DEL, and we'd delete
-     * their lock. Redis runs the whole script atomically, closing that window.
-     */
+    /** Atomic check-then-delete: removes the key only if its value still matches the caller's token. */
     private static final DefaultRedisScript<Long> SAFE_RELEASE_SCRIPT = new DefaultRedisScript<>(
             "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) "
                     + "else return 0 end",

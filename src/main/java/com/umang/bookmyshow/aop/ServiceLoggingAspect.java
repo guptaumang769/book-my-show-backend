@@ -9,17 +9,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * Cross-cutting logging + timing for the service layer, via Spring AOP.
- *
- * <p>Rather than sprinkle "entering/exiting/took Nms" logging into every service method
- * (which scatters a single concern across the codebase), AOP expresses it once as an
- * aspect and weaves it around all matching methods. A {@code @Around} advice is the most
- * powerful advice type — it wraps the join point, so it can time the call, log both the
- * normal return and thrown exceptions, and (if it wanted) alter arguments or the result.
- *
- * <p>The pointcut targets every public method of a {@code *Service} class in the service
- * package. Because it runs through Spring AOP proxies, it only advises Spring-managed
- * beans invoked from outside (the same proxy rule as {@code @Transactional}).
+ * Times and logs every public {@code *Service} method via an {@code @Around} advice, warning on
+ * slow calls. Keeps the timing concern in one place instead of scattered across the services.
  */
 @Aspect
 @Component
