@@ -8,12 +8,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Base class for integration tests. Spins up real Postgres and Redis in Docker (Testcontainers)
- * once and reuses them across subclasses, so the seat-locking and Flyway behaviour is exercised
- * against the same engines used in production — not an in-memory fake.
- *
- * <p>Kafka is disabled here (spring.kafka listeners auto-startup=false) so these tests don't
- * require a broker; event publishing is covered separately.
+ * Base for integration tests: real Postgres + Redis via Testcontainers, shared across subclasses.
+ * Kafka listeners are disabled here so the tests don't need a broker.
  */
 @SpringBootTest
 public abstract class AbstractIntegrationTest {

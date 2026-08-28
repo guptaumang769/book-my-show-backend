@@ -37,10 +37,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * The headline integration test: many users race to book the SAME seat at the same instant.
- * A correct system lets exactly one of them win; everyone else must fail cleanly. This is the
- * concrete proof that the Redis lock + DB pessimistic/optimistic locking actually prevents
- * double-booking under contention — the whole reason the project exists.
+ * 20 threads race to book the same seat; asserts exactly one booking wins and the rest fail
+ * cleanly — the double-booking guard (Redis + DB locking) under real contention.
  */
 class BookingConcurrencyIT extends AbstractIntegrationTest {
 

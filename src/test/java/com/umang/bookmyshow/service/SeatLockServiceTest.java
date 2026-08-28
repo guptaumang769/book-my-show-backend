@@ -18,11 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
-/**
- * Pure unit tests for the Redis seat-lock logic — no Docker needed, RedisTemplate is mocked.
- * The behaviour under test is the "all-or-nothing" multi-seat lock: if any seat in the batch
- * cannot be locked, every already-acquired lock must be rolled back.
- */
+/** Unit tests for the seat-lock logic (RedisTemplate mocked): all-or-nothing multi-seat acquisition. */
 @ExtendWith(MockitoExtension.class)
 class SeatLockServiceTest {
 

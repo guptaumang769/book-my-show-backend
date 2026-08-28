@@ -24,11 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/**
- * Verifies the core idempotency guarantee: a repeated payment with the same idempotency key
- * must NOT hit the gateway a second time. This is the property that stops a retried/duplicated
- * "confirm" request from charging a customer twice — the single most important payment invariant.
- */
+/** A repeated payment with the same idempotency key must not hit the gateway again (no double charge). */
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTest {
 
