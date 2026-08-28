@@ -1,6 +1,6 @@
 # BookMyShow - High Level Design (HLD)
 
-## 📋 Table of Contents
+## Table of Contents
 1. [Problem Statement](#problem-statement)
 2. [Functional Requirements](#functional-requirements)
 3. [Non-Functional Requirements](#non-functional-requirements)

@@ -1,6 +1,6 @@
 # BookMyShow - Low Level Design (LLD)
 
-## 📋 Table of Contents
+## Table of Contents
 1. [Component Architecture](#component-architecture)
 2. [Class Diagrams](#class-diagrams)
 3. [Sequence Diagrams](#sequence-diagrams)

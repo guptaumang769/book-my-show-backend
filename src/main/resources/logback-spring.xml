@@ -1,16 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Logging configuration with two profiles:
-
-    * default (profile "!json"): human-readable console text for local development. The pattern
-      includes the correlationId (from CorrelationIdFilter's MDC) and the traceId/spanId that
-      Micrometer Tracing puts in the MDC, so even plain logs are correlatable.
-
-    * profile "json": structured JSON via LogstashEncoder, one JSON object per line. This is what
-      you ship to a log aggregator (ELK / Grafana Loki) — machine-parseable, with MDC fields
-      (correlationId, traceId, spanId) as first-class JSON keys you can filter and pivot on.
-
-  Run the app with -Dspring.profiles.active=json to get JSON output for the observability stack.
+  Two profiles: default = human-readable console text; "json" = structured JSON (LogstashEncoder)
+  for a log aggregator. Both carry correlationId/traceId/spanId from the MDC.
+  Run with -Dspring.profiles.active=json for JSON output.
 -->
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>

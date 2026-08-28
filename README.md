@@ -6,15 +6,14 @@
 
 ![CI](https://github.com/guptaumang769/book-my-show-backend/actions/workflows/ci.yml/badge.svg)
 
-This is a **modular monolith by design** — the booking flow is one cohesive, consistency-
-critical transaction, so it belongs in a single service rather than split into
-microservices. (The microservices / SAGA / Resilience4j showcase lives in the sibling
-[UPI Payment System](../upi-payment-system), where the domain genuinely is distributed.)
-Knowing *when not to* reach for microservices is a deliberate part of this project.
+It's a **modular monolith**: the booking flow is one cohesive, consistency-critical
+transaction, so it lives in a single service rather than split across microservices. (The
+distributed / SAGA / Resilience4j counterpart is the sibling
+[UPI Payment System](../upi-payment-system).)
 
 ---
 
-📐 **Diagrams:** HLD, UML class, ER, and the booking state machine (Mermaid) →
+**Diagrams:** HLD, UML class, ER, and the booking state machine (Mermaid) →
 [DIAGRAMS.md](DIAGRAMS.md)
 
 ## What's inside

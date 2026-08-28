@@ -42,20 +42,16 @@ management:
       show-details: when_authorized
   metrics:
     tags:
-      # Common tag stamped on every meter so a shared Prometheus can slice by application.
       application: ${spring.application.name}
     distribution:
-      # Emit histogram buckets for HTTP server timings so Grafana can compute p95/p99 latency
-      # and render latency heatmaps (histogram_quantile over http_server_requests_seconds_bucket).
+      # p95/p99 latency histograms for HTTP timings.
       percentiles-histogram:
         http.server.requests: true
   tracing:
     sampling:
-      # Sample 100% of traces in dev; lower this (e.g. 0.1) in production to control cost.
-      probability: 1.0
+      probability: 1.0   # sample all traces in dev; lower in prod
   otlp:
     tracing:
-      # Micrometer Tracing exports spans over OTLP/HTTP to a collector (Grafana Tempo here).
       endpoint: ${OTLP_ENDPOINT:http://localhost:4318/v1/traces}
 
 springdoc:
