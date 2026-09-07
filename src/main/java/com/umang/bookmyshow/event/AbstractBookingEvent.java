@@ -5,7 +5,6 @@ import java.time.Instant;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** Common state for booking events. Kept non-final so Jackson can deserialize subtypes. */
 @Getter
 @NoArgsConstructor
 public abstract class AbstractBookingEvent implements BookingEvent {

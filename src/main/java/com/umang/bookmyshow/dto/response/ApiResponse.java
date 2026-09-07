@@ -7,10 +7,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * Generic success/failure envelope wrapping every API payload:
- * {@code {"success": true, "data": {...}}} or {@code {"success": false, "error": {...}}}.
- */
 @Getter
 @Setter
 @Builder

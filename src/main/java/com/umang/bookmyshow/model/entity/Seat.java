@@ -17,10 +17,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * A physical seat in a screen (independent of any show). Per-show availability
- * lives in {@code ShowSeat}, which references this row.
- */
 @Entity
 @Table(name = "seats")
 @Getter
@@ -38,7 +34,6 @@ public class Seat extends BaseEntity {
     @JoinColumn(name = "screen_id")
     private Screen screen;
 
-    /** Row label: A, B, C ... */
     @Column(name = "row_num")
     private String rowNum;
 

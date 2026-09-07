@@ -4,10 +4,6 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.time.Instant;
 
-/**
- * Marker for all booking domain events. The Jackson type info makes the concrete
- * subtype recoverable on the Kafka consumer side after JSON (de)serialization.
- */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "eventType")
 @JsonSubTypes({
         @JsonSubTypes.Type(value = BookingInitiatedEvent.class, name = "BOOKING_INITIATED"),

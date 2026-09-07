@@ -72,7 +72,6 @@ public class Booking extends BaseEntity {
     @Column(name = "booked_at")
     private Instant bookedAt;
 
-    /** Booking auto-expires if payment is not completed by this instant (10 min window). */
     @Column(name = "expires_at")
     private Instant expiresAt;
 

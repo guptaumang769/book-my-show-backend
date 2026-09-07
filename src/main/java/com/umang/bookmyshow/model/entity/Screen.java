@@ -31,7 +31,6 @@ public class Screen extends BaseEntity {
     @JoinColumn(name = "theater_id")
     private Theater theater;
 
-    /** e.g. "Screen 1", "IMAX", "Audi 3". */
     private String name;
 
     @Column(name = "total_seats")

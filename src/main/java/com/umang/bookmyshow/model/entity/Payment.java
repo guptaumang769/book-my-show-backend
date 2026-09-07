@@ -37,7 +37,6 @@ public class Payment extends BaseEntity {
 
     private BigDecimal amount;
 
-    /** Payment channel label, e.g. UPI / CREDIT_CARD. Kept as a String to stay flexible. */
     @Column(name = "payment_method")
     private String paymentMethod;
 

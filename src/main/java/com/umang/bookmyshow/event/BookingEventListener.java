@@ -7,11 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
-/**
- * Consumes booking events and routes them to notifications. Exceptions thrown here are
- * retried per the container's DefaultErrorHandler and, on exhaustion, published to the
- * dead-letter topic (see KafkaConfig). A separate listener drains the DLT for visibility.
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor

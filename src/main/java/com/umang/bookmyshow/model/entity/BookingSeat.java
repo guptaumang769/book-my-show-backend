@@ -14,7 +14,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** Junction linking a booking to each locked/booked show seat, capturing the price paid. */
 @Entity
 @Table(name = "booking_seats")
 @Getter
