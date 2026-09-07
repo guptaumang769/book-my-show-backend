@@ -62,15 +62,6 @@ public class BookingService {
     private final OutboxService outboxService;
     private final BookingMetrics bookingMetrics;
 
-    /**
-     * Initiate flow: grab Redis locks first, then pessimistically lock the
-     * show_seat rows, validate availability, LOCK them, create the INITIATED booking with a
-     * 10-minute expiry, and decrement the denormalized counter. On any failure the Redis
-     * locks are released so the seats free up immediately rather than waiting out the TTL.
-     *
-     * <p>Locking seats reduces availability, so the cached seat map for this show (and any
-     * shows list carrying the availability count) is evicted.
-     */
     @Caching(evict = {
             @CacheEvict(cacheNames = "show_seats", key = "#request.showId"),
             @CacheEvict(cacheNames = "shows", allEntries = true)
@@ -82,7 +73,6 @@ public class BookingService {
         boolean locksAcquired = seatLockService.acquireLocks(
                 request.getShowId(), request.getSeatIds(), request.getUserId());
         if (!locksAcquired) {
-            // Two users raced for the same seats and this one lost the Redis lock — a demand signal.
             bookingMetrics.recordSeatLockContention();
             throw new SeatsNotAvailableException(
                     "One or more selected seats are no longer available", request.getSeatIds());
@@ -101,7 +91,6 @@ public class BookingService {
                         .filter(s -> s.getStatus() != ShowSeatStatus.AVAILABLE)
                         .map(ShowSeat::getId)
                         .toList();
-                // Lost the race at the DB layer (seats taken between lock and row read).
                 bookingMetrics.recordSeatLockContention();
                 throw new SeatsNotAvailableException(
                         "One or more selected seats are no longer available", unavailable);
@@ -145,31 +134,18 @@ public class BookingService {
 
             showRepository.decrementAvailableSeats(request.getShowId(), request.getSeatIds().size());
 
-            // Transactional outbox: the event row commits atomically with the booking;
-            // OutboxPoller relays it to Kafka afterwards (no dual-write).
             outboxService.record(new BookingInitiatedEvent(savedBooking));
 
             bookingMetrics.recordInitiated();
             return toInitiateResponse(savedBooking, availableSeats, now);
         } catch (RuntimeException e) {
-            // Transaction rolls back automatically; free the Redis locks so seats reopen now.
             seatLockService.releaseLocks(request.getShowId(), request.getSeatIds(), request.getUserId());
             throw e;
         }
     }
 
-    /**
-     * Confirm flow: validate the booking is INITIATED and unexpired, charge via PaymentService,
-     * then mark the booking CONFIRMED and its seats BOOKED.
-     *
-     * <p>Payment and confirmation run in one transaction, so a DB failure after the charge rolls
-     * back the whole unit — the booking stays INITIATED and its hold simply expires. The one edge
-     * that a single transaction can't undo is the <em>external</em> gateway charge itself; a
-     * production system reconciles that with a separate refund/settlement job.
-     */
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public BookingConfirmResponse confirmBooking(Long bookingId, BookingConfirmRequest request) {
-        // Time the whole money path so Grafana can chart p95/p99 confirm latency (RED "Duration").
         return bookingMetrics.timeConfirm(() -> doConfirmBooking(bookingId, request));
     }
 
@@ -206,8 +182,6 @@ public class BookingService {
             seats.forEach(s -> s.setStatus(ShowSeatStatus.BOOKED));
             showSeatRepository.saveAll(seats);
 
-            // Seats are BOOKED for good now (DB is the source of truth); drop the Redis holds
-            // instead of leaving them to age out their 10-minute TTL.
             List<Long> confirmedSeatIds = seats.stream().map(ShowSeat::getId).toList();
             seatLockService.releaseLocks(
                     booking.getShow().getId(), confirmedSeatIds, booking.getUser().getId());
@@ -234,7 +208,13 @@ public class BookingService {
         if (booking.getUser() == null || !booking.getUser().getId().equals(userId)) {
             throw new InvalidRequestException("Booking does not belong to user " + userId);
         }
+        boolean wasConfirmed = booking.getBookingStatus() == BookingStatus.CONFIRMED;
         assertTransition(booking.getBookingStatus(), BookingStatus.CANCELLED);
+
+        if (wasConfirmed) {
+            paymentService.processRefund(bookingId);
+            booking.setPaymentStatus(PaymentStatus.REFUNDED);
+        }
 
         Instant now = Instant.now();
         booking.setBookingStatus(BookingStatus.CANCELLED);
@@ -288,10 +268,6 @@ public class BookingService {
                 .toList();
     }
 
-    /**
-     * Enforces the booking state machine: rejects illegal transitions with a clear error
-     * instead of silently corrupting state.
-     */
     private void assertTransition(BookingStatus from, BookingStatus to) {
         boolean allowed = switch (to) {
             case CONFIRMED, CANCELLED, EXPIRED -> from == BookingStatus.INITIATED

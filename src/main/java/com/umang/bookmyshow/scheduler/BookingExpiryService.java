@@ -19,12 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Expires a single stale booking in its own transaction. This lives in a separate bean from
- * {@link BookingExpiryScheduler} on purpose: {@code @Transactional(REQUIRES_NEW)} (and the
- * cache eviction) only take effect through the Spring proxy, so the scheduler must call it as
- * a collaborator — an internal self-call would bypass the proxy and silently drop both.
- */
 @Service
 @RequiredArgsConstructor
 public class BookingExpiryService {
@@ -36,10 +30,6 @@ public class BookingExpiryService {
     private final OutboxService outboxService;
     private final BookingMetrics bookingMetrics;
 
-    /**
-     * Expires one booking in its OWN transaction so a single bad row can't roll back the whole
-     * sweep. Freeing seats raises availability, so the cached seat maps are evicted.
-     */
     @Caching(evict = {
             @CacheEvict(cacheNames = "show_seats", allEntries = true),
             @CacheEvict(cacheNames = "shows", allEntries = true)

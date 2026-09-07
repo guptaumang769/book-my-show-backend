@@ -4,10 +4,6 @@ import com.umang.bookmyshow.event.BookingEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-/**
- * Stub notification sink. Invoked by the Kafka listener; a real implementation would
- * fan out to an email/SMS provider. Kept side-effect-free (just logs) for the portfolio.
- */
 @Slf4j
 @Service
 public class NotificationService {

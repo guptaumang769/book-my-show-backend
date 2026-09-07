@@ -9,11 +9,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
-/**
- * Redis-backed distributed lock, the fast first line of defense against two users
- * grabbing the same seat. It fails fast without touching the DB; the pessimistic
- * row lock in the booking transaction is the durable backstop.
- */
 @Service
 @RequiredArgsConstructor
 public class SeatLockService {
@@ -21,7 +16,6 @@ public class SeatLockService {
     private static final Duration LOCK_DURATION = Duration.ofMinutes(10);
     private static final String KEY_PREFIX = "seat:lock:";
 
-    /** Atomic check-then-delete: removes the key only if its value still matches the caller's token. */
     private static final DefaultRedisScript<Long> SAFE_RELEASE_SCRIPT = new DefaultRedisScript<>(
             "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) "
                     + "else return 0 end",
@@ -37,7 +31,6 @@ public class SeatLockService {
         return Boolean.TRUE.equals(acquired);
     }
 
-    /** Acquires all seat locks or none — rolls back partial acquisitions on the first failure. */
     public boolean acquireLocks(Long showId, List<Long> seatIds, Long userId) {
         List<String> acquiredLocks = new ArrayList<>();
         try {
@@ -66,11 +59,6 @@ public class SeatLockService {
         }
     }
 
-    /**
-     * Ownership-checked release of a batch: each lock is removed only if this user still holds
-     * it (via {@link #safeRelease}). Used by the booking/cancel/expiry paths so we never delete
-     * a lock that expired and was re-acquired by a different user in the meantime.
-     */
     public void releaseLocks(Long showId, List<Long> seatIds, Long userId) {
         if (seatIds == null) {
             return;
@@ -80,7 +68,6 @@ public class SeatLockService {
         }
     }
 
-    /** Ownership-checked release: only removes the lock if this user still holds it. */
     public boolean safeRelease(Long showId, Long seatId, Long userId) {
         Long deleted = redisTemplate.execute(
                 SAFE_RELEASE_SCRIPT,

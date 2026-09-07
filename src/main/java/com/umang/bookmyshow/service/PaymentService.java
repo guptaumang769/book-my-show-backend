@@ -7,6 +7,8 @@ import com.umang.bookmyshow.model.entity.Payment;
 import com.umang.bookmyshow.model.enums.PaymentStatus;
 import com.umang.bookmyshow.payment.GatewayResponse;
 import com.umang.bookmyshow.payment.GatewayType;
+import com.umang.bookmyshow.payment.PaymentGatewayFactory;
+import com.umang.bookmyshow.payment.RefundResponse;
 import com.umang.bookmyshow.payment.ResilientPaymentGatewayClient;
 import com.umang.bookmyshow.repository.BookingRepository;
 import com.umang.bookmyshow.repository.IdempotencyRecordRepository;
@@ -18,17 +20,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Charges a booking through a pluggable gateway.
- *
- * <p>IDEMPOTENCY: charging money must be safe to retry. Clients (or an upstream retry on a
- * dropped response) may submit the same payment twice. We key each attempt by an
- * idempotency key: on the first call we persist the outcome under that key; on any replay
- * with the same key we return the stored result and never call the gateway again — so the
- * customer is charged at most once. The unique constraint on idempotency_keys is the final
- * guard against a race between two concurrent replays. This class is deliberately generic
- * (no UPI/ticketing specifics) so it can be lifted into a future UPI payment project.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -36,6 +27,7 @@ public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final ResilientPaymentGatewayClient gatewayClient;
+    private final PaymentGatewayFactory gatewayFactory;
     private final BookingRepository bookingRepository;
     private final IdempotencyRecordRepository idempotencyRepository;
 
@@ -43,7 +35,6 @@ public class PaymentService {
     public Payment processPayment(PaymentRequest request) {
         String idempotencyKey = request.getIdempotencyKey();
 
-        // Replay short-circuit: same key already processed -> return the stored payment.
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             Optional<IdempotencyRecord> existing =
                     idempotencyRepository.findByIdempotencyKey(idempotencyKey);
@@ -67,7 +58,6 @@ public class PaymentService {
                     request.getGatewayType() != null ? request.getGatewayType() : GatewayType.STRIPE;
             payment.setPaymentGateway(gatewayType.name());
 
-            // Resilient call: retry + circuit breaker + fallback (see ResilientPaymentGatewayClient).
             GatewayResponse response = gatewayClient.process(gatewayType, request);
             if (response.isSuccess()) {
                 payment.setStatus(PaymentStatus.COMPLETED);
@@ -90,6 +80,39 @@ public class PaymentService {
         }
     }
 
+    @Transactional
+    public void processRefund(Long bookingId) {
+        Payment payment = paymentRepository
+                .findTopByBookingIdAndStatusOrderByIdDesc(bookingId, PaymentStatus.COMPLETED)
+                .orElse(null);
+        if (payment == null) {
+            log.info("No completed payment found for booking {} — skipping refund", bookingId);
+            return;
+        }
+
+        GatewayType gatewayType;
+        try {
+            gatewayType = GatewayType.valueOf(payment.getPaymentGateway());
+        } catch (IllegalArgumentException e) {
+            log.error("Unknown gateway {} on payment {} — cannot refund",
+                    payment.getPaymentGateway(), payment.getId());
+            return;
+        }
+
+        RefundResponse response = gatewayFactory.getGateway(gatewayType)
+                .processRefund(payment.getGatewayTransactionId(), payment.getAmount());
+
+        if (response.isSuccess()) {
+            payment.setStatus(PaymentStatus.REFUNDED);
+            paymentRepository.save(payment);
+            log.info("Refund {} processed for payment {} (booking {})",
+                    response.getRefundId(), payment.getId(), bookingId);
+        } else {
+            log.error("Refund failed for payment {} (booking {}): {}",
+                    payment.getId(), bookingId, response.getError());
+        }
+    }
+
     private void recordIdempotency(String key, PaymentRequest request, Payment payment) {
         if (key == null || key.isBlank()) {
             return;
@@ -104,8 +127,6 @@ public class PaymentService {
         try {
             idempotencyRepository.save(idempotencyRecord);
         } catch (DataIntegrityViolationException e) {
-            // A concurrent replay committed the same key first; the unique constraint did its
-            // job. Treat it as already-recorded rather than surfacing a 500 to the caller.
             log.warn("Idempotency key {} already recorded by a concurrent request", key);
         }
     }

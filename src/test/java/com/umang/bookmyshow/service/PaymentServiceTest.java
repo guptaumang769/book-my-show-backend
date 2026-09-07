@@ -12,6 +12,7 @@ import com.umang.bookmyshow.model.entity.Payment;
 import com.umang.bookmyshow.model.enums.PaymentStatus;
 import com.umang.bookmyshow.payment.GatewayResponse;
 import com.umang.bookmyshow.payment.GatewayType;
+import com.umang.bookmyshow.payment.PaymentGatewayFactory;
 import com.umang.bookmyshow.payment.ResilientPaymentGatewayClient;
 import com.umang.bookmyshow.repository.BookingRepository;
 import com.umang.bookmyshow.repository.IdempotencyRecordRepository;
@@ -24,12 +25,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/** A repeated payment with the same idempotency key must not hit the gateway again (no double charge). */
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTest {
 
     @Mock private PaymentRepository paymentRepository;
     @Mock private ResilientPaymentGatewayClient gatewayClient;
+    @Mock private PaymentGatewayFactory gatewayFactory;
     @Mock private BookingRepository bookingRepository;
     @Mock private IdempotencyRecordRepository idempotencyRepository;
 
@@ -38,7 +39,7 @@ class PaymentServiceTest {
     @BeforeEach
     void setUp() {
         paymentService = new PaymentService(
-                paymentRepository, gatewayClient, bookingRepository, idempotencyRepository);
+                paymentRepository, gatewayClient, gatewayFactory, bookingRepository, idempotencyRepository);
     }
 
     private PaymentRequest request(String idemKey) {

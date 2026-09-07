@@ -5,14 +5,17 @@ import com.umang.bookmyshow.dto.response.SeatDTO;
 import com.umang.bookmyshow.dto.response.ShowDTO;
 import com.umang.bookmyshow.dto.response.ShowDetailsDTO;
 import com.umang.bookmyshow.dto.response.ShowSeatsResponse;
+import com.umang.bookmyshow.dto.response.TheaterDTO;
 import com.umang.bookmyshow.exception.ResourceNotFoundException;
 import com.umang.bookmyshow.model.entity.Movie;
 import com.umang.bookmyshow.model.entity.Show;
 import com.umang.bookmyshow.model.entity.ShowSeat;
+import com.umang.bookmyshow.model.entity.Theater;
 import com.umang.bookmyshow.model.enums.ShowSeatStatus;
 import com.umang.bookmyshow.repository.MovieRepository;
 import com.umang.bookmyshow.repository.ShowRepository;
 import com.umang.bookmyshow.repository.ShowSeatRepository;
+import com.umang.bookmyshow.repository.TheaterRepository;
 import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -28,12 +31,21 @@ public class CatalogService {
     private final MovieRepository movieRepository;
     private final ShowRepository showRepository;
     private final ShowSeatRepository showSeatRepository;
+    private final TheaterRepository theaterRepository;
 
-    @Cacheable(value = "movies", key = "#genre == null ? 'all' : #genre")
+    @Cacheable(value = "movies",
+            key = "(#cityId ?: 'all') + '-' + (#genre ?: 'all') + '-' + (#language ?: 'all')")
     public List<MovieDTO> getMoviesByCity(Long cityId, String genre, String language) {
-        List<Movie> movies = (genre == null || genre.isBlank())
-                ? movieRepository.findByIsActiveTrue()
-                : movieRepository.findByGenreIgnoreCaseAndIsActiveTrue(genre);
+        List<Movie> movies;
+        if (cityId != null && (genre != null && !genre.isBlank())) {
+            movies = movieRepository.findActiveByCityIdAndGenre(cityId, genre);
+        } else if (cityId != null) {
+            movies = movieRepository.findActiveByCityId(cityId);
+        } else if (genre != null && !genre.isBlank()) {
+            movies = movieRepository.findByGenreIgnoreCaseAndIsActiveTrue(genre);
+        } else {
+            movies = movieRepository.findByIsActiveTrue();
+        }
         return movies.stream()
                 .filter(m -> language == null || language.isBlank()
                         || language.equalsIgnoreCase(m.getLanguage()))
@@ -60,6 +72,13 @@ public class CatalogService {
                 .availableSeats(availableSeats.stream().map(this::toSeatDto).toList())
                 .availableCount(availableSeats.size())
                 .build();
+    }
+
+    @Cacheable(value = "theaters", key = "#cityId")
+    public List<TheaterDTO> getTheatersByCity(Long cityId) {
+        return theaterRepository.findByCityId(cityId).stream()
+                .map(this::toTheaterDto)
+                .toList();
     }
 
     private MovieDTO toMovieDto(Movie m) {
@@ -118,6 +137,18 @@ public class CatalogService {
                 .type(ss.getSeat() != null && ss.getSeat().getSeatType() != null
                         ? ss.getSeat().getSeatType().name() : null)
                 .price(ss.getPrice())
+                .build();
+    }
+
+    private TheaterDTO toTheaterDto(Theater t) {
+        return TheaterDTO.builder()
+                .id(t.getId())
+                .name(t.getName())
+                .cityName(t.getCity() != null ? t.getCity().getName() : null)
+                .address(t.getAddress())
+                .latitude(t.getLatitude())
+                .longitude(t.getLongitude())
+                .totalScreens(t.getTotalScreens())
                 .build();
     }
 }

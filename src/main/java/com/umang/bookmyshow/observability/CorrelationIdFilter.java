@@ -13,11 +13,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-/**
- * Stamps a correlation id into the SLF4J MDC for each request (reusing an inbound
- * {@code X-Correlation-Id} if present, else generating one) and echoes it in the response.
- * Runs first so every log line carries it; cleared in finally so it never leaks across pooled threads.
- */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class CorrelationIdFilter extends OncePerRequestFilter {

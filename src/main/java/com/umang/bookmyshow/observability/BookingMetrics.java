@@ -6,11 +6,6 @@ import io.micrometer.core.instrument.Timer;
 import java.util.function.Supplier;
 import org.springframework.stereotype.Component;
 
-/**
- * Business metrics for the booking domain (Micrometer -> Prometheus). Counters give the rate of
- * each outcome; the timer gives confirm-path latency. Ratios like confirmed/initiated are the
- * conversion KPIs shown on the Grafana dashboard.
- */
 @Component
 public class BookingMetrics {
 
@@ -59,12 +54,10 @@ public class BookingMetrics {
         expired.increment();
     }
 
-    /** Called wherever a lock/seat-availability acquisition loses a race. */
     public void recordSeatLockContention() {
         seatLockContention.increment();
     }
 
-    /** Times the supplied confirm work and records it under booking.confirm.duration. */
     public <T> T timeConfirm(Supplier<T> work) {
         return confirmDuration.record(work);
     }

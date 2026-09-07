@@ -13,6 +13,7 @@ import com.umang.bookmyshow.model.entity.Payment;
 import com.umang.bookmyshow.model.enums.PaymentStatus;
 import com.umang.bookmyshow.payment.GatewayResponse;
 import com.umang.bookmyshow.payment.GatewayType;
+import com.umang.bookmyshow.payment.PaymentGatewayFactory;
 import com.umang.bookmyshow.payment.ResilientPaymentGatewayClient;
 import com.umang.bookmyshow.repository.BookingRepository;
 import com.umang.bookmyshow.repository.IdempotencyRecordRepository;
@@ -26,16 +27,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/**
- * The declined-payment path: when the gateway returns a failure, the service must throw
- * {@link PaymentFailedException} and persist the payment as FAILED (so it isn't silently lost
- * and the booking is never confirmed).
- */
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceFailureTest {
 
     @Mock private PaymentRepository paymentRepository;
     @Mock private ResilientPaymentGatewayClient gatewayClient;
+    @Mock private PaymentGatewayFactory gatewayFactory;
     @Mock private BookingRepository bookingRepository;
     @Mock private IdempotencyRecordRepository idempotencyRepository;
 
@@ -44,7 +41,7 @@ class PaymentServiceFailureTest {
     @BeforeEach
     void setUp() {
         paymentService = new PaymentService(
-                paymentRepository, gatewayClient, bookingRepository, idempotencyRepository);
+                paymentRepository, gatewayClient, gatewayFactory, bookingRepository, idempotencyRepository);
     }
 
     @Test
