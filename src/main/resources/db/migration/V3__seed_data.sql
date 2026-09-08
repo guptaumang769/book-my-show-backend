@@ -1,7 +1,3 @@
--- Demo seed data so the app is immediately explorable.
--- One city, two movies, a theater with one screen, 20 seats, and one active show
--- whose show_seats are all AVAILABLE. Timestamps use now() to satisfy NOT NULL audit cols.
-
 INSERT INTO cities (id, name, state, created_at, updated_at)
 VALUES (1, 'Bengaluru', 'Karnataka', now(), now());
 
