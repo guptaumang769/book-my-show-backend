@@ -7,6 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> {
 
-    /** Oldest unpublished events first — the poller relays these in order. */
     List<OutboxEvent> findByPublishedFalseOrderByCreatedAtAsc(Limit limit);
 }

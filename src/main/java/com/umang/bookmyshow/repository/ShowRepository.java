@@ -17,10 +17,6 @@ public interface ShowRepository extends JpaRepository<Show, Long> {
                          @Param("cityId") Long cityId,
                          @Param("date") LocalDate date);
 
-    /**
-     * Atomically decrement the denormalized available-seat counter. Doing this as a
-     * single UPDATE (rather than read-modify-write in Java) avoids a lost-update race.
-     */
     @Modifying
     @Query("UPDATE Show s SET s.availableSeats = s.availableSeats - :count WHERE s.id = :showId")
     int decrementAvailableSeats(@Param("showId") Long showId, @Param("count") int count);

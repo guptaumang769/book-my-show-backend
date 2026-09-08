@@ -15,6 +15,5 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     Optional<Booking> findByBookingReference(String bookingReference);
 
-    /** Used by the expiry scheduler to reclaim seats from stale INITIATED bookings. */
     List<Booking> findByBookingStatusAndExpiresAtBefore(BookingStatus status, Instant expiryTime);
 }

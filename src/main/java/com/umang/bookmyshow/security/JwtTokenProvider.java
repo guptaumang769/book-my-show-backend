@@ -10,7 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-/** Generates and validates HS256 JWTs carrying the user's email as subject and id as a claim. */
 @Slf4j
 @Component
 public class JwtTokenProvider {
