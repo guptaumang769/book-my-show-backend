@@ -20,12 +20,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * Per-show state of a seat. This is the row that actually gets locked/booked.
- * The {@code @Version} column gives us optimistic locking: two transactions that
- * read the same AVAILABLE seat and both try to LOCK it will collide, and the
- * loser gets an OptimisticLockException instead of a silent double-book.
- */
 @Entity
 @Table(name = "show_seats")
 @Getter

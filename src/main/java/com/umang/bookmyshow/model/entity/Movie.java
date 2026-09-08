@@ -41,7 +41,6 @@ public class Movie extends BaseEntity {
     @Column(name = "release_date")
     private LocalDate releaseDate;
 
-    /** MPAA-style rating: PG, PG-13, R. */
     private String rating;
 
     @Column(name = "poster_url")

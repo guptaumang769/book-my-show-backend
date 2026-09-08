@@ -6,11 +6,6 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
-/**
- * String-keyed/String-valued RedisTemplate used by SeatLockService. Seat locks are
- * simple {@code key -> owner} strings, so String serializers keep the values readable
- * in redis-cli and avoid JDK-serialization surprises.
- */
 @Configuration
 public class RedisConfig {
 

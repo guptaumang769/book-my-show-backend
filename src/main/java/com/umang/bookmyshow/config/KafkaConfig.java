@@ -26,11 +26,6 @@ import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.util.backoff.FixedBackOff;
 
-/**
- * Kafka wiring for booking events: JSON-serialized {@link BookingEvent} values, a main
- * topic and its dead-letter topic, and a consumer error handler that retries a few times
- * with a fixed backoff before routing the poison message to the DLT.
- */
 @Configuration
 @EnableKafka
 public class KafkaConfig {
@@ -84,7 +79,6 @@ public class KafkaConfig {
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
 
-        // Retry 3 times, 2s apart; then publish the failed record to <topic>.DLT.
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
                 kafkaTemplate,
                 (records, ex) -> new TopicPartition(BOOKING_EVENTS_DLT, records.partition()));

@@ -2,11 +2,6 @@ package com.umang.bookmyshow.util;
 
 import java.security.SecureRandom;
 
-/**
- * Generates human-readable, collision-resistant booking references:
- * {@code BMS} + epoch-millis + 4 random alphanumerics. The DB still enforces a
- * unique constraint on booking_reference as the real backstop.
- */
 public final class BookingReferenceGenerator {
 
     private static final String PREFIX = "BMS";

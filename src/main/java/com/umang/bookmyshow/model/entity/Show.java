@@ -53,7 +53,6 @@ public class Show extends BaseEntity {
     @Column(name = "base_price")
     private BigDecimal basePrice;
 
-    /** Denormalized counter for fast availability checks; kept in sync by BookingService. */
     @Column(name = "available_seats")
     private Integer availableSeats;
 

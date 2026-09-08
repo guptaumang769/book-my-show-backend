@@ -12,11 +12,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * Stores the outcome of a payment keyed by the caller-supplied idempotency key.
- * If the same key is replayed (client retry, double-submit), PaymentService returns
- * the stored result instead of charging the customer a second time.
- */
 @Entity
 @Table(name = "idempotency_keys")
 @Getter
@@ -36,7 +31,6 @@ public class IdempotencyRecord extends BaseEntity {
     @Column(name = "booking_id")
     private Long bookingId;
 
-    /** Payment id produced the first time this key was processed. */
     @Column(name = "payment_id")
     private Long paymentId;
 
