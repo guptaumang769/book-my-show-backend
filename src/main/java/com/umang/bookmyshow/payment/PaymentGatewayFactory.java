@@ -7,11 +7,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
-/**
- * Factory that indexes every {@link PaymentGateway} bean by its {@link GatewayType}.
- * Spring injects all implementations as a List, so registering a new provider is
- * purely additive.
- */
 @Component
 public class PaymentGatewayFactory {
 

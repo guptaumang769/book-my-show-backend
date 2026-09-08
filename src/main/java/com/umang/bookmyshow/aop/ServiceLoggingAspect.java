@@ -8,10 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-/**
- * Times and logs every public {@code *Service} method via an {@code @Around} advice, warning on
- * slow calls. Keeps the timing concern in one place instead of scattered across the services.
- */
 @Aspect
 @Component
 public class ServiceLoggingAspect {
@@ -19,7 +15,6 @@ public class ServiceLoggingAspect {
     private static final Logger log = LoggerFactory.getLogger(ServiceLoggingAspect.class);
     private static final long SLOW_CALL_MS = 500;
 
-    /** Any method on a Spring bean whose class name ends in "Service" in our service package. */
     @Pointcut("execution(public * com.umang.bookmyshow.service..*Service.*(..))")
     public void serviceMethods() {
     }

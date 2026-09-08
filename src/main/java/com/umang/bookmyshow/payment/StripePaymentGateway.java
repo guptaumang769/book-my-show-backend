@@ -6,7 +6,6 @@ import java.math.BigDecimal;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
-/** Stub Stripe integration — always succeeds. Swap the body for the real SDK later. */
 @Component
 public class StripePaymentGateway implements PaymentGateway {
 

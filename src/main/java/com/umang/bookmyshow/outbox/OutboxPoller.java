@@ -15,13 +15,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Relay side of the outbox. Polls unpublished rows and ships them to Kafka via the existing
- * typed template (so the DLT/error handling still applies), then marks them published.
- * Delivery is <b>at-least-once</b>: a crash after the Kafka send but before the DB update
- * re-sends the event on the next poll — which is why consumers must be idempotent.
- * (A production system might use Debezium/CDC instead of polling.)
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -48,8 +41,6 @@ public class OutboxPoller {
                 row.setPublished(true);
                 row.setPublishedAt(Instant.now());
             } catch (Exception e) {
-                // Leave the row unpublished; it'll be retried next poll. Log and move on so
-                // one bad row doesn't block the batch.
                 log.error("Failed to relay outbox event {} ({}): {}",
                         row.getId(), row.getEventType(), e.toString());
             }

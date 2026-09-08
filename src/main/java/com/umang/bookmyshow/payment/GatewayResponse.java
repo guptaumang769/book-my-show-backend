@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
-/** Normalized result returned by any {@link PaymentGateway}, hiding provider-specific shapes. */
 @Getter
 @Builder
 @AllArgsConstructor
