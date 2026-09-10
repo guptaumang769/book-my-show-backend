@@ -20,9 +20,10 @@ distributed / SAGA / Resilience4j counterpart is the sibling
 
 | Area | Highlights |
 |---|---|
+| **Catalog** | City-filtered movie browsing (Show→Screen→Theater→City join), theater listing by city, cached reads. |
 | **Concurrency** | Two-layer seat lock: Redis `SETNX` fast-fail + DB pessimistic (`SELECT … FOR UPDATE`) & optimistic (`@Version`) locking. Proven under a 20-thread race test. |
 | **Booking** | Initiate → confirm → cancel with an enforced state machine; 10-minute hold with a scheduled expiry job that reclaims seats. |
-| **Payments** | Strategy + Factory over payment gateways; idempotency keys; saga-style confirmation. |
+| **Payments** | Strategy + Factory over payment gateways; idempotency keys; saga-style confirmation; automatic refund on cancellation of confirmed bookings. |
 | **Eventing** | Booking events via the **transactional Outbox** (event row committed with the state change; `OutboxPoller` relays to **Kafka**), dead-letter topic, notification consumer. |
 | **Resilience** | **Resilience4j** circuit breaker + retry + fallback on the payment-gateway call; **AOP** aspect for service-layer timing/logging. |
 | **Security** | Spring Security 6, JWT auth, BCrypt password hashing. |
